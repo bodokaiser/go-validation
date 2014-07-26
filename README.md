@@ -8,7 +8,6 @@ Extended validation for [validator](http://gopkg.in/validator.v1) in
 You can use this as a replacement for [validator](http://gopkg.in/validator.v1):
 
     type User struct {
-        Id bson.ObjectId `validate:"required,id"`
         Name    string   `validate:"required,min=5"`
         Email   string   `validate:"required,email"`
         Address Address  `validate:"required,nested"`

@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"fmt"
 	"testing"
 
 	"gopkg.in/check.v1"
@@ -13,6 +14,24 @@ func TestValidation(t *testing.T) {
 }
 
 type ValidationSuite struct{}
+
+func (s *ValidationSuite) TestError(c *check.C) {
+	c.Check(Error{}.Error(), check.Equals, "")
+
+	c.Check(Error{
+		"foo": Errors{
+			validator.ErrMin,
+		},
+	}.Error(), check.Matches, fmt.Sprintf("foo has %s", validator.ErrMin.Error()))
+}
+
+func (s *ValidationSuite) TestErrors(c *check.C) {
+	c.Check(Errors{}.Error(), check.Equals, "")
+
+	c.Check(Errors{
+		validator.ErrMin,
+	}.Error(), check.Matches, validator.ErrMin.Error())
+}
 
 func (s *ValidationSuite) TestValid(c *check.C) {
 	c.Check(Valid("", "email"), check.IsNil)
