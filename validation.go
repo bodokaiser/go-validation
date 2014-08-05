@@ -21,6 +21,7 @@ func (err Error) Error() string {
 	for k, errs := range err {
 		return fmt.Sprintf("%s has %s", k, Errors(errs))
 	}
+
 	return ""
 }
 
@@ -32,6 +33,7 @@ func (errs Errors) Error() string {
 	if len(errs) > 0 {
 		return errs[0].Error()
 	}
+
 	return ""
 }
 
@@ -46,32 +48,35 @@ func init() {
 }
 
 // Validates a value with the given tag configuration.
+//
 // This is more used for testing internal validators you may prefer Validate().
-func Valid(v interface{}, s string) error {
-	if ok, err := DefaultValidator.Valid(v, s); !ok {
+func Valid(value interface{}, params string) error {
+	if ok, err := DefaultValidator.Valid(value, params); !ok {
 		return Errors(err)
 	}
+
 	return nil
 }
 
 // Validates a value with the configuration defined in tags and returns nil or
 // an error map type of Error.
-func Validate(v interface{}) error {
-	if ok, err := DefaultValidator.Validate(v); !ok {
+func Validate(value interface{}) error {
+	if ok, err := DefaultValidator.Validate(value); !ok {
 		return Error(err)
 	}
+
 	return nil
 }
 
 // Returns error if given value is not an email.
-func Email(v interface{}, _ string) error {
-	if err := Required(v, ""); err != nil {
+func Email(value interface{}, _ string) error {
+	if err := Required(value, ""); err != nil {
 		return nil
 	}
 
-	switch r := reflect.ValueOf(v); r.Kind() {
+	switch v := reflect.ValueOf(value); v.Kind() {
 	case reflect.String:
-		s := r.String()
+		s := v.String()
 
 		if _, err := mail.ParseAddress(s); err != nil {
 			return validator.ErrInvalid
@@ -82,90 +87,91 @@ func Email(v interface{}, _ string) error {
 	default:
 		return validator.ErrUnsupported
 	}
+
 	return nil
 }
 
 // Returns error if the given value does not validate.
-func Nested(v interface{}, _ string) error {
-	if v == nil {
+func Nested(value interface{}, _ string) error {
+	if value == nil {
 		return nil
 	}
 
-	if r := reflect.ValueOf(v); r.Kind() == reflect.Slice {
-		errs := Errors{}
-		for i := 0; i < r.Len(); i++ {
-			if err := Validate(r.Index(i).Interface()); err != nil {
+	if v := reflect.ValueOf(value); v.Kind() == reflect.Slice {
+		errs := make(Errors, 0)
+
+		for i := 0; i < v.Len(); i++ {
+			err := Validate(v.Index(i).Interface())
+
+			if err != nil {
 				errs = append(errs, err)
 			}
 		}
+
 		if len(errs) > 0 {
 			return errs
 		}
+
 		return nil
 	}
 
-	return Validate(v)
+	return Validate(value)
 }
 
 // Returns error if given value exceeds minimum.
-func Minimum(v interface{}, s string) error {
-	if err := Required(v, ""); err != nil {
+func Minimum(value interface{}, param string) error {
+	if err := Required(value, ""); err != nil {
 		return nil
 	}
 
-	switch r := reflect.ValueOf(v); r.Kind() {
+	n, err := parseInt(param)
+	if err != nil {
+		return err
+	}
+
+	switch v := reflect.ValueOf(value); v.Kind() {
 	case reflect.String, reflect.Slice, reflect.Map, reflect.Array:
-		i, err := parseInt(s)
-
-		if err != nil {
-			return err
-		}
-
-		if int64(r.Len()) < i {
+		if int64(v.Len()) < n {
 			return validator.ErrMin
 		}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		i, err := parseInt(s)
-
-		if err != nil {
-			return err
-		}
-
-		if r.Int() < i {
+		if v.Int() < n {
 			return validator.ErrMin
 		}
 	default:
 		return validator.ErrUnsupported
 	}
+
 	return nil
 }
 
 // Returns error if given value is nil or zero value.
-func Required(v interface{}, _ string) error {
-	if v == nil {
+func Required(value interface{}, _ string) error {
+	if value == nil {
 		return validator.ErrZeroValue
 	}
 
-	switch r := reflect.ValueOf(v); r.Kind() {
+	switch v := reflect.ValueOf(value); v.Kind() {
 	case reflect.Slice, reflect.Map, reflect.Array:
-		if r.Len() == 0 {
+		if v.Len() == 0 {
 			return validator.ErrZeroValue
 		}
 	default:
-		if v == reflect.Zero(reflect.TypeOf(v)).Interface() {
+		if value == reflect.Zero(reflect.TypeOf(value)).Interface() {
 			return validator.ErrZeroValue
 		}
 	}
+
 	return nil
 }
 
 // Parses an int in string into int type.
 func parseInt(s string) (int64, error) {
-	i, err := strconv.ParseInt(s, 0, 64)
+	n, err := strconv.ParseInt(s, 0, 64)
 
 	if err != nil {
 		return 0, validator.ErrBadParameter
 	}
 
-	return i, nil
+	return n, nil
 }
