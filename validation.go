@@ -61,8 +61,11 @@ func Valid(value interface{}, params string) error {
 // Validates a value with the configuration defined in tags and returns nil or
 // an error map type of Error.
 func Validate(value interface{}) error {
-	if ok, err := DefaultValidator.Validate(value); !ok {
-		return Error(err)
+	switch reflect.Indirect(reflect.ValueOf(value)).Kind() {
+	case reflect.Struct:
+		if ok, err := DefaultValidator.Validate(value); !ok {
+			return Error(err)
+		}
 	}
 
 	return nil
